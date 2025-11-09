@@ -23,8 +23,7 @@ To reduce food waste by connecting donors, receivers, volunteers, and admins thr
 ## 🗄️ Database
 Import `foodshare_database.sql` into phpMyAdmin to create required tables.
 
-## 📸 Screenshots
-(Add screenshots of your homepage, dashboards, and admin panel here)
+
 
 ---
-Developed by: **[Your Name]**
+Developed by: **Ashwin Monteiro**
