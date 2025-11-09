@@ -1,4 +1,4 @@
- FoodShare
+# 🍲 FoodShare
 
 **FoodShare** is a community food sharing web application built with PHP, MySQL, HTML, CSS, and JavaScript.
 
@@ -23,7 +23,8 @@ To reduce food waste by connecting donors, receivers, volunteers, and admins thr
 ## 🗄️ Database
 Import `foodshare_database.sql` into phpMyAdmin to create required tables.
 
-
+## 📸 Screenshots
+(Add screenshots of your homepage, dashboards, and admin panel here)
 
 ---
-Developed by: **Ashwin Monteiro**
+Developed by: **[Your Name]**
