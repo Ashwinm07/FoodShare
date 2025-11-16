@@ -1,14 +1,14 @@
 <?php
 include('db_connect.php');
 
-$sql = "SELECT r.RequestID, r.Timestamp, r.RequestedQty,
+$sql = $sql = "SELECT r.RequestID, r.Timestamp, r.RequestedQty,
         u.Name AS ReceiverName, 
         d.Item AS FoodItem,
         v.Name AS VolunteerName
         FROM food_request r
         JOIN users u ON r.ReceiverID = u.UserID
-        JOIN food_donation d ON r.DonationID = d.DonationID
-        LEFT JOIN volunteer v ON r.RequestID = v.AssignedRequests 
+        JOIN food_donation d ON r.DonATIONID = d.DonationID
+        LEFT JOIN volunteer v ON r.VolunteerID = v.VolunteerID 
         WHERE r.Status = 'Delivered'
         ORDER BY r.Timestamp DESC";
 
