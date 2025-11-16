@@ -23,6 +23,9 @@ if (!isset($_SESSION['UserID']) || $_SESSION['Role'] != 'Receiver') {
 
   <?php if (isset($_GET['success']) && $_GET['success'] == 'requested') { ?>
       <div style="text-align:center; color:green; margin:15px;">✅ Food request sent successfully!</div>
+  <?php } elseif (isset($_GET['error']) && $_GET['error'] == 'qty_unavailable') { ?>
+      <!-- NEW ERROR MESSAGE -->
+      <div style="text-align:center; color:red; margin:15px;">❌ Request failed. Not enough quantity available or the item was just claimed.</div>
   <?php } elseif (isset($_GET['error'])) { ?>
       <div style="text-align:center; color:red; margin:15px;">❌ Failed to send request. Try again.</div>
   <?php } ?>
