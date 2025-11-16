@@ -21,7 +21,7 @@ echo "<tr style='background:#f39c12; color:white;'>
 if ($result->num_rows > 0) {
     while ($row = $result->fetch_assoc()) {
         $reqID = $row['RequestID'];
-        $item_qty = htmlspecialchars($row['FoodItem']) . " (" . $row['RequestedQty'] . " of " . $row['DonationQty'] . ")";
+        $item_qty = htmlspecialchars($row['FoodItem']) . " (" . $row['RequestedQty'] . ")";
         $location_contact = "<strong>" . htmlspecialchars($row['ReceiverName']) . "</strong><br>" . htmlspecialchars($row['ReceiverContact']);
 
         echo "<tr>

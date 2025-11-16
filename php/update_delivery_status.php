@@ -1,47 +1,61 @@
 <?php
 include('db_connect.php');
+// Ensure the script is only run by a logged-in Volunteer
+if (!isset($_SESSION['UserID']) || $_SESSION['Role'] != 'Volunteer') { 
+    echo '<script type="text/javascript">window.parent.location.href = "../login.php";</script>';
+    exit(); 
+}
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['request_id'], $_POST['new_status'], $_POST['volunteer_id'])) {
-    
-    // Sanitize and validate inputs
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['request_id'])) {
     $reqID = intval($_POST['request_id']);
-    $volID = intval($_POST['volunteer_id']);
-    $newStatus = $_POST['new_status']; // 'Picked Up' or 'Delivered'
-    $volunteerName = $_SESSION['Name']; 
+    $newStatus = $_POST['new_status'];
+    $volunteerName = $_SESSION['Name'];
+    $volunteer_user_id = $_SESSION['UserID']; // Get the logged-in volunteer's ID
 
-    // --- 1. Update food_request status using prepared statement ---
-    $stmt_req_update = $conn->prepare("UPDATE food_request SET Status=? WHERE RequestID=?");
-    $stmt_req_update->bind_param("si", $newStatus, $reqID);
-    
-    if ($stmt_req_update->execute()) {
-        $stmt_req_update->close();
+    $conn->begin_transaction();
 
-        // --- 2. Update volunteer's pickup status using prepared statement ---
-        $stmt_vol_update = $conn->prepare("UPDATE volunteer SET PickupStatus=? WHERE VolunteerID=?");
-        $stmt_vol_update->bind_param("si", $newStatus, $volID);
-        $stmt_vol_update->execute();
-        $stmt_vol_update->close();
+    try {
+        // --- 1. Update food_request status ---
+        // We also double-check that this request IS assigned to this volunteer
+        $stmt_req = $conn->prepare("UPDATE food_request SET Status=? WHERE RequestID=? AND VolunteerID = ?");
+        $stmt_req->bind_param("sii", $newStatus, $reqID, $volunteer_user_id);
+        $stmt_req->execute();
+        $stmt_req->close();
 
-        // --- 3. Optional: Clear AssignedRequests if delivered ---
+        // --- 2. Update volunteer's GENERAL status ---
         if ($newStatus == 'Delivered') {
-            $stmt_clear_assigned = $conn->prepare("UPDATE volunteer SET AssignedRequests=NULL WHERE VolunteerID=?");
-            $stmt_clear_assigned->bind_param("i", $volID);
-            $stmt_clear_assigned->execute();
-            $stmt_clear_assigned->close();
+            // This volunteer is now 'Available' for new tasks
+            $stmt_vol_clear = $conn->prepare("UPDATE volunteer SET PickupStatus='Available' WHERE VolunteerID=?");
+            $stmt_vol_clear->bind_param("i", $volunteer_user_id);
+            $stmt_vol_clear->execute();
+            $stmt_vol_clear->close();
+            
+            $activity = "Marked delivery for request #$reqID as Delivered.";
+        } else {
+            // For 'Picked Up', their status remains 'In Progress'
+            $activity = "Marked pickup for request #$reqID as Picked Up.";
         }
 
-        // Redirect back to the volunteer dashboard to see updated list
-        header("Location: ../volunteer_dashboard.php?status_updated=true&req={$reqID}&new={$newStatus}");
+        // --- 3. Log the activity ---
+        $stmt_log = $conn->prepare("INSERT INTO admin_logs (Name, Email, Activity) VALUES (?, '', ?)");
+        $stmt_log->bind_param("ss", $volunteerName, $activity);
+        $stmt_log->execute();
+        $stmt_log->close();
+
+        $conn->commit();
+
+        // FIX: Use JavaScript redirect to refresh the parent dashboard
+        echo '<script type="text/javascript">window.parent.location.href = "../volunteer_dashboard.php";</script>';
         exit();
-    } else {
-        // Handle error
-        error_log("Delivery status update failed: " . $conn->error);
-        header("Location: ../volunteer_dashboard.php?status_updated=false");
+
+    } catch (Exception $e) {
+        $conn->rollback();
+        error_log("Volunteer update failed: " . $e->getMessage());
+        echo '<script type="text/javascript">window.parent.location.href = "../volunteer_dashboard.php?error=update_failed";</script>';
         exit();
     }
 }
-
-// Fallback redirect
-header("Location: ../volunteer_dashboard.php");
+// Fallback if not POST or required data missing
+echo '<script type="text/javascript">window.parent.location.href = "../volunteer_dashboard.php";</script>';
 exit();
 ?>

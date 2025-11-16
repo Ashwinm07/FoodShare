@@ -1,42 +1,29 @@
 <?php
 include('db_connect.php');
-// Ensure session and role checks are performed (already in dashboard, but good practice)
+// Ensure session and role checks are performed
 if (!isset($_SESSION['UserID']) || $_SESSION['Role'] != 'Volunteer') {
     die("Access Denied.");
 }
 
-$volunteer_id = $_SESSION['UserID'];
+// Get the Volunteer's ID from their UserID in the session.
+// This assumes the VolunteerID in the `volunteer` table matches the UserID in the `users` table.
+$volunteer_user_id = $_SESSION['UserID'];
 
-// First, get the VolunteerID from the UserID in the users table
-$stmt_vol_id = $conn->prepare("SELECT VolunteerID FROM volunteer WHERE Email = (SELECT Email FROM users WHERE UserID = ?)");
-$stmt_vol_id->bind_param("i", $volunteer_id);
-$stmt_vol_id->execute();
-$result_vol_id = $stmt_vol_id->get_result();
-$volunteer_record = $result_vol_id->fetch_assoc();
-$stmt_vol_id->close();
-
-// If the volunteer doesn't have an entry in the volunteer table (manual cleanup needed in DB)
-if (!$volunteer_record) {
-    die("<p style='text-align:center; color:#e74c3c;'>Error: Volunteer record not found. Please contact admin.</p>");
-}
-
-$vol_id_in_volunteer_table = $volunteer_record['VolunteerID'];
-
-// Query for requests assigned to this specific volunteer (by VolunteerID in volunteer table)
+// --- (NEW, SIMPLER QUERY) ---
+// Select all requests that are assigned to this volunteer
+// and are not yet 'Delivered' or 'Declined'.
 $sql = "SELECT r.RequestID, r.Status, r.RequestedQty, 
         u.Name AS ReceiverName, u.Location AS ReceiverLocation, u.Contact AS ReceiverContact,
-        d.Item AS FoodItem, 
-        v.PickupStatus
+        d.Item AS FoodItem
         FROM food_request r
         JOIN users u ON r.ReceiverID = u.UserID
         JOIN food_donation d ON r.DonationID = d.DonationID
-        JOIN volunteer v ON r.RequestID = v.AssignedRequests
-        WHERE v.VolunteerID = ?
+        WHERE r.VolunteerID = ?
         AND r.Status IN ('Assigned', 'Picked Up')
         ORDER BY r.Timestamp DESC";
 
 $stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $vol_id_in_volunteer_table);
+$stmt->bind_param("i", $volunteer_user_id);
 $stmt->execute();
 $result = $stmt->get_result();
 ?>
@@ -115,13 +102,13 @@ if ($result->num_rows > 0) {
                 <hr style='margin:15px 0;'>
 
                 <form action='update_delivery_status.php' method='POST' target='_top'>
-                    <input type='hidden' name='request_id' value='{$reqID}'>
-                    <input type='hidden' name='volunteer_id' value='{$vol_id_in_volunteer_table}'>";
+                    <input type='hidden' name='request_id' value='{$reqID}'>";
+                    // We no longer need to pass the volunteer ID from here
 
         if ($row['Status'] == 'Assigned') {
             echo "<button type='submit' name='new_status' value='Picked Up' class='btn btn-action picked'>Picked Up</button>";
         } elseif ($row['Status'] == 'Picked Up') {
-            echo "<button type='submit' name='new_status' value='Delivered' class='btn btn-action'>Delivered (Done)</button>";
+            echo "<button type'submit' name='new_status' value='Delivered' class='btn btn-action'>Delivered (Done)</button>";
         } else {
             echo "<p style='color:#27ae60; font-weight:bold;'>Delivery Complete!</p>";
         }
