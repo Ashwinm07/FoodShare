@@ -6,6 +6,8 @@ if (!isset($_SESSION['UserID']) || $_SESSION['Role'] != 'Receiver') {
 }
 $receiver_id = $_SESSION['UserID'];
 
+// VULNERABILITY ALERT: This query is still vulnerable to SQL Injection if $receiver_id were not a session variable. 
+// For production, you should use prepared statements here too. 
 $sql = "SELECT r.RequestID, r.DonationID, r.RequestedQty, r.Status, r.Timestamp, d.Item, d.ExpiryTime
         FROM food_request r
         JOIN food_donation d ON r.DonationID = d.DonationID
@@ -73,6 +75,9 @@ h2 {
 .badge.Accepted { background:#2ecc71; }
 .badge.Declined { background:#e74c3c; }
 .badge.Assigned { background:#2980b9; }
+/* New Status Styles */
+.badge.Picked-Up { background:#f39c12; } 
+.badge.Delivered { background:#27ae60; }
 small {
   display:block;
   color:#555;
@@ -100,23 +105,28 @@ if ($result && $result->num_rows > 0) {
         $item = htmlspecialchars($row['Item']);
         $qty = $row['RequestedQty'];
         $status = $row['Status'];
+        $status_class = str_replace(' ', '-', $status); // Use status without space for CSS class
         $req_date = date("M d, Y H:i", strtotime($row['Timestamp']));
         $expiry = date("M d, Y", strtotime($row['ExpiryTime']));
 
         echo "<div class='card'>
                 <h3>$item</h3>
                 <p>Quantity Requested: <strong>$qty</strong></p>
-                <p>Status: <span class='badge $status'>$status</span></p>
+                <p>Status: <span class='badge $status_class'>$status</span></p>
                 <small>Requested On: $req_date</small>
                 <small>Expiry: $expiry</small>";
 
-        // Optional visual cue
+        // Visual cues for various stages
         if ($status == 'Accepted') {
-            echo "<p style='color:#27ae60;margin-top:10px;font-weight:bold;'>✅ Your request was accepted!</p>";
+            echo "<p style='color:#27ae60;margin-top:10px;font-weight:bold;'>✅ Your request was accepted! Waiting for volunteer assignment.</p>";
         } elseif ($status == 'Declined') {
             echo "<p style='color:#e74c3c;margin-top:10px;font-weight:bold;'>❌ Request declined by admin.</p>";
         } elseif ($status == 'Assigned') {
-            echo "<p style='color:#2980b9;margin-top:10px;font-weight:bold;'>🚚 Volunteer assigned!</p>";
+            echo "<p style='color:#2980b9;margin-top:10px;font-weight:bold;'>🚚 Volunteer assigned! Awaiting pickup.</p>";
+        } elseif ($status == 'Picked Up') {
+            echo "<p style='color:#f39c12;margin-top:10px;font-weight:bold;'>📦 Order picked up! Delivery is now in progress.</p>";
+        } elseif ($status == 'Delivered') {
+            echo "<p style='color:#27ae60;margin-top:10px;font-weight:bold;'>🎉 Delivered! Enjoy your food!</p>";
         }
 
         echo "</div>";

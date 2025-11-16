@@ -1,8 +1,10 @@
 <?php
 include('db_connect.php');
 
+// We only select items that are 'Available' AND have more than 0 quantity
 $sql = "SELECT DonationID, Item, Quantity, Status, ExpiryTime
         FROM food_donation
+        WHERE Status = 'Available' AND Quantity > 0
         ORDER BY ExpiryTime ASC";
 $result = $conn->query($sql);
 ?>
@@ -58,6 +60,8 @@ $result = $conn->query($sql);
     .badge.available { background: #27ae60; }
     .badge.requested { background: #e67e22; }
     .badge.assigned { background: #2980b9; }
+    /* New 'Unavailable' badge style */
+    .badge.unavailable { background: #95a5a6; } 
 
     .card-footer {
       display: flex;
@@ -89,37 +93,42 @@ $result = $conn->query($sql);
       while ($row = $result->fetch_assoc()) {
           $id = $row['DonationID'];
           $item = htmlspecialchars($row['Item']);
-          $qty = htmlspecialchars($row['Quantity']);
+          $qty = htmlspecialchars($row['Quantity']); // This is now the REMAINING quantity
           $status = strtolower($row['Status']);
           $expiry = date("M d, Y H:i", strtotime($row['ExpiryTime']));
 
           echo "<div class='card'>
                   <h3>$item</h3>
-                  <p>Quantity: <strong>$qty</strong></p>
+                  <p>Quantity Available: <strong>$qty</strong></p>
                   <p>Expiry: <strong>$expiry</strong></p>
                   <span class='badge $status'>$row[Status]</span>
                   <div class='card-footer'>";
           
-         if ($row['Status'] == 'Available') {
-    echo "<form method='POST' action='../php/request_food.php' target='_parent'>
-            <input type='hidden' name='donation_id' value='$id'>
-            <label for='qty_$id' style='font-size:13px;'>Quantity:</label>
-            <select name='requested_qty' id='qty_$id' style='padding:4px; border-radius:5px; margin-left:5px;'>
-                <option value='1'>1</option>
-                <option value='2'>2</option>
-                <option value='3'>3</option>
-                <option value='4'>4</option>
-                <option value='5'>5</option>
-            </select>
-            <button type='submit' class='btn' style='margin-top:8px;'>Request</button>
-          </form>";
-} else {
-    echo "<button class='btn' disabled>Requested</button>";
-}
+         // We only show the form if the item is available
+         if ($row['Status'] == 'Available' && $row['Quantity'] > 0) {
+            echo "<form method='POST' action='../php/request_food.php' target='_parent'>
+                    <input type='hidden' name='donation_id' value='$id'>
+                    <label for='qty_$id' style='font-size:13px;'>Quantity:</label>
+                    <select name='requested_qty' id='qty_$id' style='padding:4px; border-radius:5px; margin-left:5px;'>";
+            
+            // Dynamically create the dropdown options
+            // Limit to a max of 5, or the total available, whichever is smaller
+            $max_selectable = min(5, $qty);
+            for ($i = 1; $i <= $max_selectable; $i++) {
+                echo "<option value='$i'>$i</option>";
+            }
+            
+            echo "  </select>
+                    <button type='submit' class='btn' style='margin-top:8px;'>Request</button>
+                  </form>";
+        } else {
+            // This will now show for items that are 'Requested', 'Assigned', or 'Unavailable'
+            echo "<button class='btn' disabled>Unavailable</button>";
+        }
           echo "</div></div>";
       }
   } else {
-      echo "<p style='text-align:center;width:100%;color:gray;'>No donations found.</p>";
+      echo "<p style='text-align:center;width:100%;color:gray;'>No donations are currently available.</p>";
   }
   ?>
 </div>

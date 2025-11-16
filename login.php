@@ -13,12 +13,21 @@
     <input type="password" name="password" placeholder="Password" required>
     <button type="submit" name="login" class="btn">Login</button>
   </form>
-  <p>Don't have an account? <a href="register.php">Register</a></p>
+  <!-- UPDATED LINE -->
+  <p>Don't have an account? <a href="register.php">Register</a> | <a href="index.html">Home</a></p>
 </div>
 <?php
 if(isset($_POST['login'])){
   $email=$_POST['email']; $password=$_POST['password'];
-  $res=$conn->query("SELECT * FROM users WHERE Email='$email'");
+  
+  // --- Start of Security Fix (Prepared Statement) ---
+  // VULNERABLE: $res=$conn->query("SELECT * FROM users WHERE Email='$email'");
+  $stmt = $conn->prepare("SELECT * FROM users WHERE Email = ?");
+  $stmt->bind_param("s", $email);
+  $stmt->execute();
+  $res = $stmt->get_result();
+  // --- End of Security Fix ---
+
   if($res->num_rows==1){
     $row=$res->fetch_assoc();
     if(password_verify($password,$row['Password'])){
@@ -32,6 +41,7 @@ if(isset($_POST['login'])){
       exit();
     }else echo "<p style='text-align:center;color:red'>Wrong password!</p>";
   }else echo "<p style='text-align:center;color:red'>Email not found!</p>";
+  $stmt->close();
 }
 ?>
 </body>
